@@ -11,6 +11,15 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const parser = new Parser();
 const userId = process.env.TELEGRAM_USER_ID;
 
+// Only respond to the authorized Telegram user
+bot.use((ctx, next) => {
+  const fromId = String(ctx.from?.id || "");
+  if (fromId !== String(userId)) {
+    return;
+  }
+  return next();
+});
+
 // Función para autenticar con Google Calendar
 async function authenticateGoogle() {
   try {
@@ -159,7 +168,7 @@ async function getTechNews() {
 // Función para obtener información del sistema
 async function getServerStatus() {
   try {
-    const si = require('systeminformation');
+    const si = require("systeminformation");
 
     const [cpu, mem, disk, osInfo, temp] = await Promise.all([
       si.currentLoad(),
@@ -170,14 +179,14 @@ async function getServerStatus() {
     ]);
 
     const diskInfo = disk[0];
-    const cpuTemp = temp.main || temp.cores?.[0] || 'N/A';
+    const cpuTemp = temp.main || temp.cores?.[0] || "N/A";
 
     const message = `
 *Estado del Servidor*
 
 *CPU:*
 • Uso: ${cpu.currentLoad.toFixed(2)}%
-• Temperatura: ${cpuTemp !== 'N/A' ? cpuTemp + '°C' : 'No disponible'}
+• Temperatura: ${cpuTemp !== "N/A" ? cpuTemp + "°C" : "No disponible"}
 
 *Memoria RAM:*
 • Usada: ${(mem.used / 1024 / 1024 / 1024).toFixed(2)} GB
@@ -194,12 +203,12 @@ async function getServerStatus() {
 • Versión: ${osInfo.release}
 • Uptime: ${(osInfo.uptime / 3600).toFixed(2)}h
 
-_Actualizado a las ${new Date().toLocaleTimeString('es-ES')}_
+_Actualizado a las ${new Date().toLocaleTimeString("es-ES")}_
     `.trim();
 
     return message;
   } catch (error) {
-    console.error('Error getting server status:', error.message);
+    console.error("Error getting server status:", error.message);
     return `Error al obtener información del servidor: ${error.message}`;
   }
 }
@@ -207,10 +216,10 @@ _Actualizado a las ${new Date().toLocaleTimeString('es-ES')}_
 // Función para obtener top 10 procesos
 async function getTopProcesses() {
   try {
-    const si = require('systeminformation');
+    const si = require("systeminformation");
 
     const processes = await si.processes();
-    
+
     const sortedByMemory = [...processes.list]
       .sort((a, b) => (b.mem || 0) - (a.mem || 0))
       .slice(0, 10);
@@ -220,7 +229,7 @@ async function getTopProcesses() {
       .slice(0, 10);
 
     let message = `*Top 10 Procesos - Uso de Recursos*\n\n`;
-    
+
     message += `*Top 10 por CPU:*\n`;
     sortedByCpu.forEach((proc, index) => {
       const cpuUsage = (proc.cpu || 0).toFixed(2);
@@ -235,11 +244,11 @@ async function getTopProcesses() {
       message += `${index + 1}. ${proc.name.substring(0, 20).padEnd(20)} RAM: ${memUsage.padStart(6)} MB CPU: ${cpuUsage.padStart(6)}%\n`;
     });
 
-    message += `\n_Actualizado a las ${new Date().toLocaleTimeString('es-ES')}_`;
+    message += `\n_Actualizado a las ${new Date().toLocaleTimeString("es-ES")}_`;
 
     return message;
   } catch (error) {
-    console.error('Error getting top processes:', error.message);
+    console.error("Error getting top processes:", error.message);
     return `Error al obtener procesos: ${error.message}`;
   }
 }

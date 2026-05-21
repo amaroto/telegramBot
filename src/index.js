@@ -204,6 +204,46 @@ _Actualizado a las ${new Date().toLocaleTimeString('es-ES')}_
   }
 }
 
+// Función para obtener top 10 procesos
+async function getTopProcesses() {
+  try {
+    const si = require('systeminformation');
+
+    const processes = await si.processes();
+    
+    const sortedByMemory = [...processes.list]
+      .sort((a, b) => (b.mem || 0) - (a.mem || 0))
+      .slice(0, 10);
+
+    const sortedByCpu = [...processes.list]
+      .sort((a, b) => (b.cpu || 0) - (a.cpu || 0))
+      .slice(0, 10);
+
+    let message = `*Top 10 Procesos - Uso de Recursos*\n\n`;
+    
+    message += `*Top 10 por CPU:*\n`;
+    sortedByCpu.forEach((proc, index) => {
+      const cpuUsage = (proc.cpu || 0).toFixed(2);
+      const memUsage = (proc.mem || 0).toFixed(2);
+      message += `${index + 1}. ${proc.name.substring(0, 20).padEnd(20)} CPU: ${cpuUsage.padStart(6)}% RAM: ${memUsage.padStart(6)} MB\n`;
+    });
+
+    message += `\n*Top 10 por RAM:*\n`;
+    sortedByMemory.forEach((proc, index) => {
+      const memUsage = (proc.mem || 0).toFixed(2);
+      const cpuUsage = (proc.cpu || 0).toFixed(2);
+      message += `${index + 1}. ${proc.name.substring(0, 20).padEnd(20)} RAM: ${memUsage.padStart(6)} MB CPU: ${cpuUsage.padStart(6)}%\n`;
+    });
+
+    message += `\n_Actualizado a las ${new Date().toLocaleTimeString('es-ES')}_`;
+
+    return message;
+  } catch (error) {
+    console.error('Error getting top processes:', error.message);
+    return `Error al obtener procesos: ${error.message}`;
+  }
+}
+
 async function fetchCalendarEvents(calendarId, calendar, now, endOfDay) {
   try {
     const response = await calendar.events.list({
@@ -359,7 +399,7 @@ async function sendDailyMessage() {
 // Comandos del bot
 bot.command("start", (ctx) => {
   ctx.reply(
-    `¡Hola! 👋 Soy tu bot de noticias tech y eventos.\n\nComandos disponibles:\n/noticias - Obtener noticias ahora\n/eventos - Ver eventos de hoy\n/status - Ver estado del servidor\n/help - Ayuda`,
+    `¡Hola! 👋 Soy tu bot de noticias tech y eventos.\n\nComandos disponibles:\n/noticias - Obtener noticias ahora\n/eventos - Ver eventos de hoy\n/status - Ver estado del servidor\n/top - Ver top 10 procesos\n/help - Ayuda`,
   );
 });
 
@@ -408,6 +448,7 @@ bot.command("help", (ctx) => {
 /noticias - Obtener noticias de tecnología
 /eventos - Ver eventos del día
 /status - Ver estado del servidor
+/top - Ver top 10 procesos por CPU y RAM
 /help - Mostrar esta ayuda
 
 El bot te enviará automáticamente un resumen diario de noticias y eventos a las ${process.env.SCHEDULE_HOUR}:${process.env.SCHEDULE_MINUTE} cada día.
@@ -420,6 +461,12 @@ bot.command("status", async (ctx) => {
   ctx.sendChatAction("typing");
   const status = await getServerStatus();
   ctx.reply(status, { parse_mode: "Markdown" });
+});
+
+bot.command("top", async (ctx) => {
+  ctx.sendChatAction("typing");
+  const topProcesses = await getTopProcesses();
+  ctx.reply(topProcesses, { parse_mode: "Markdown" });
 });
 
 // Configurar scheduler para enviar mensaje diario

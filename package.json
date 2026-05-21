@@ -1,0 +1,33 @@
+{
+  "name": "tech-events-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot that sends daily events and tech news at 8am",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "setup-google": "node src/setup-google.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "events",
+    "news",
+    "tech"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "dotenv": "^16.3.1",
+    "google-auth-library": "^9.0.0",
+    "googleapis": "^118.0.0",
+    "node-cron": "^3.0.2",
+    "rss-parser": "^3.13.0",
+    "telegraf": "^4.14.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

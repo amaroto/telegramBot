@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: tech-events-bot
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - TZ=America/Mexico_City
+    volumes:
+      - ./logs:/app/logs

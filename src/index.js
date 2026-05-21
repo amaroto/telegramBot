@@ -1,6 +1,6 @@
-const fs = require('fs');
-const path = require('path');
-const { google } = require('googleapis');
+const fs = require("fs");
+const path = require("path");
+const { google } = require("googleapis");
 require("dotenv").config();
 const { Telegraf } = require("telegraf");
 const cron = require("node-cron");
@@ -14,37 +14,37 @@ const userId = process.env.TELEGRAM_USER_ID;
 // Función para autenticar con Google Calendar
 async function authenticateGoogle() {
   try {
-    const credentialsPath = path.join(__dirname, 'credentials.json');
-    const tokenPath = path.join(__dirname, 'token.json');
+    const credentialsPath = path.join(__dirname, "credentials.json");
+    const tokenPath = path.join(__dirname, "token.json");
 
     if (!fs.existsSync(credentialsPath)) {
       console.log(
-        '⚠️  Google Calendar no configurado. Ejecuta: npm run setup-google'
+        "⚠️  Google Calendar no configurado. Ejecuta: npm run setup-google",
       );
       return null;
     }
 
-    const credentials = require('./credentials.json');
+    const credentials = require("./credentials.json");
     const { client_secret, client_id, redirect_uris } = credentials.installed;
 
     const oAuth2Client = new google.auth.OAuth2(
       client_id,
       client_secret,
-      redirect_uris[0]
+      redirect_uris[0],
     );
 
     if (!fs.existsSync(tokenPath)) {
       console.log(
-        '⚠️  Token no encontrado. Ejecuta: npm run setup-google para autenticarte'
+        "⚠️  Token no encontrado. Ejecuta: npm run setup-google para autenticarte",
       );
       return null;
     }
 
-    const token = JSON.parse(fs.readFileSync(tokenPath, 'utf8'));
+    const token = JSON.parse(fs.readFileSync(tokenPath, "utf8"));
     oAuth2Client.setCredentials(token);
     return oAuth2Client;
   } catch (error) {
-    console.error('Error autenticando con Google:', error.message);
+    console.error("Error autenticando con Google:", error.message);
     return null;
   }
 }
@@ -156,6 +156,54 @@ async function getTechNews() {
   }
 }
 
+// Función para obtener información del sistema
+async function getServerStatus() {
+  try {
+    const si = require('systeminformation');
+
+    const [cpu, mem, disk, osInfo, temp] = await Promise.all([
+      si.currentLoad(),
+      si.mem(),
+      si.fsSize(),
+      si.osInfo(),
+      si.cpuTemperature(),
+    ]);
+
+    const diskInfo = disk[0];
+    const cpuTemp = temp.main || temp.cores?.[0] || 'N/A';
+
+    const message = `
+*Estado del Servidor*
+
+*CPU:*
+• Uso: ${cpu.currentLoad.toFixed(2)}%
+• Temperatura: ${cpuTemp !== 'N/A' ? cpuTemp + '°C' : 'No disponible'}
+
+*Memoria RAM:*
+• Usada: ${(mem.used / 1024 / 1024 / 1024).toFixed(2)} GB
+• Total: ${(mem.total / 1024 / 1024 / 1024).toFixed(2)} GB
+• Uso: ${((mem.used / mem.total) * 100).toFixed(2)}%
+
+*Almacenamiento:*
+• Usado: ${(diskInfo.used / 1024 / 1024 / 1024).toFixed(2)} GB
+• Total: ${(diskInfo.size / 1024 / 1024 / 1024).toFixed(2)} GB
+• Uso: ${((diskInfo.used / diskInfo.size) * 100).toFixed(2)}%
+
+*Sistema:*
+• OS: ${osInfo.platform} ${osInfo.distro}
+• Versión: ${osInfo.release}
+• Uptime: ${(osInfo.uptime / 3600).toFixed(2)}h
+
+_Actualizado a las ${new Date().toLocaleTimeString('es-ES')}_
+    `.trim();
+
+    return message;
+  } catch (error) {
+    console.error('Error getting server status:', error.message);
+    return `Error al obtener información del servidor: ${error.message}`;
+  }
+}
+
 async function fetchCalendarEvents(calendarId, calendar, now, endOfDay) {
   try {
     const response = await calendar.events.list({
@@ -164,22 +212,27 @@ async function fetchCalendarEvents(calendarId, calendar, now, endOfDay) {
       timeMax: endOfDay.toISOString(),
       maxResults: 20,
       singleEvents: true,
-      orderBy: 'startTime',
+      orderBy: "startTime",
     });
 
     const items = response.data.items || [];
     return items.map((event) => ({
-      title: event.summary || 'Sin título',
-      time: new Date(event.start.dateTime || event.start.date).toLocaleTimeString('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit',
+      title: event.summary || "Sin título",
+      time: new Date(
+        event.start.dateTime || event.start.date,
+      ).toLocaleTimeString("es-ES", {
+        hour: "2-digit",
+        minute: "2-digit",
       }),
-      description: event.description || 'Sin descripción',
+      description: event.description || "Sin descripción",
       link: event.htmlLink,
       calendarId,
     }));
   } catch (error) {
-    console.error(`Error getting events for calendar ${calendarId}:`, error.message);
+    console.error(
+      `Error getting events for calendar ${calendarId}:`,
+      error.message,
+    );
     return [];
   }
 }
@@ -190,63 +243,77 @@ async function getEvents() {
     const auth = await authenticateGoogle();
     if (!auth) {
       console.log(
-        '📅 Google Calendar no disponible, usando eventos de ejemplo'
+        "📅 Google Calendar no disponible, usando eventos de ejemplo",
       );
       return [
         {
-          title: 'Daily Standup',
-          time: '09:00',
-          description: 'Team standup meeting',
+          title: "Daily Standup",
+          time: "09:00",
+          description: "Team standup meeting",
         },
         {
-          title: 'Project Review',
-          time: '14:00',
-          description: 'Quarterly project review',
+          title: "Project Review",
+          time: "14:00",
+          description: "Quarterly project review",
         },
       ];
     }
 
-    const calendar = google.calendar({ version: 'v3', auth });
+    const calendar = google.calendar({ version: "v3", auth });
     const now = new Date();
     const endOfDay = new Date(now);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const ids = (process.env.GOOGLE_CALENDAR_IDS || process.env.GOOGLE_CALENDAR_ID || 'primary')
-      .split(',')
+    const ids = (
+      process.env.GOOGLE_CALENDAR_IDS ||
+      process.env.GOOGLE_CALENDAR_ID ||
+      "primary"
+    )
+      .split(",")
       .map((id) => id.trim())
       .filter(Boolean);
 
     const allEvents = [];
     for (const calendarId of ids) {
-      const events = await fetchCalendarEvents(calendarId, calendar, now, endOfDay);
+      const events = await fetchCalendarEvents(
+        calendarId,
+        calendar,
+        now,
+        endOfDay,
+      );
       allEvents.push(...events);
     }
 
     if (allEvents.length === 0) {
       return [
         {
-          title: 'No hay eventos para hoy',
-          time: '',
-          description: 'No se encontraron eventos en los calendarios configurados.',
+          title: "No hay eventos para hoy",
+          time: "",
+          description:
+            "No se encontraron eventos en los calendarios configurados.",
         },
       ];
     }
 
-    const uniqueEvents = allEvents.filter((event, index, self) =>
-      index ===
+    const uniqueEvents = allEvents.filter(
+      (event, index, self) =>
+        index ===
         self.findIndex(
-          (t) => t.title === event.title && t.time === event.time && t.calendarId === event.calendarId,
+          (t) =>
+            t.title === event.title &&
+            t.time === event.time &&
+            t.calendarId === event.calendarId,
         ),
     );
 
     return uniqueEvents.sort((a, b) => a.time.localeCompare(b.time));
   } catch (error) {
-    console.error('Error getting Google Calendar events:', error.message);
+    console.error("Error getting Google Calendar events:", error.message);
     return [
       {
-        title: 'Daily Standup',
-        time: '09:00',
-        description: 'Team standup meeting',
+        title: "Daily Standup",
+        time: "09:00",
+        description: "Team standup meeting",
       },
     ];
   }
@@ -292,7 +359,7 @@ async function sendDailyMessage() {
 // Comandos del bot
 bot.command("start", (ctx) => {
   ctx.reply(
-    `¡Hola! 👋 Soy tu bot de noticias tech y eventos.\n\nComandos disponibles:\n/noticias - Obtener noticias ahora\n/eventos - Ver eventos de hoy\n/help - Ayuda`,
+    `¡Hola! 👋 Soy tu bot de noticias tech y eventos.\n\nComandos disponibles:\n/noticias - Obtener noticias ahora\n/eventos - Ver eventos de hoy\n/status - Ver estado del servidor\n/help - Ayuda`,
   );
 });
 
@@ -335,17 +402,24 @@ bot.command("eventos", async (ctx) => {
 bot.command("help", (ctx) => {
   ctx.reply(
     `
-📚 *Ayuda - Comandos Disponibles:*
+*Ayuda - Comandos Disponibles:*
 
 /start - Iniciar el bot
 /noticias - Obtener noticias de tecnología
 /eventos - Ver eventos del día
+/status - Ver estado del servidor
 /help - Mostrar esta ayuda
 
 El bot te enviará automáticamente un resumen diario de noticias y eventos a las ${process.env.SCHEDULE_HOUR}:${process.env.SCHEDULE_MINUTE} cada día.
   `,
     { parse_mode: "Markdown" },
   );
+});
+
+bot.command("status", async (ctx) => {
+  ctx.sendChatAction("typing");
+  const status = await getServerStatus();
+  ctx.reply(status, { parse_mode: "Markdown" });
 });
 
 // Configurar scheduler para enviar mensaje diario

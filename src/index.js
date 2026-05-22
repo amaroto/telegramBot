@@ -530,19 +530,19 @@ bot.command("help", (ctx) => {
 /eventos - Ver eventos del día
 /status - Ver estado del servidor
 /top - Ver top 10 procesos por CPU y RAM
-/comida <cantidad> <alimento> - Registrar una comida. Ej: /comida 2 huevos
-/alimento <cantidad> <alimento> - Consultar calorías estimadas sin registrar. Ej: /alimento 1 manzana
+/comida cantidad alimento - Registrar una comida. Ej: /comida 2 huevos
+/alimento cantidad alimento - Consultar calorías estimadas sin registrar. Ej: /alimento 1 manzana
 /alimentos - Ver algunos alimentos conocidos por el bot
-/peso <kg> - Registrar tu peso actual. Ej: /peso 72.5
-/altura <cm> - Registrar tu altura. Ej: /altura 175
-/edad <años> - Registrar tu edad. Ej: /edad 30
-/perfil <altura_cm> <edad> - Registrar altura y edad juntos. Ej: /perfil 175 30
+/peso kg - Registrar tu peso actual. Ej: /peso 72.5
+/altura cm - Registrar tu altura. Ej: /altura 175
+/edad años - Registrar tu edad. Ej: /edad 30
+/perfil altura edad - Registrar altura y edad juntos. Ej: /perfil 175 30
 /calorias - Ver las calorías consumidas hoy y tu objetivo estimado
 /semanal - Ver el resumen de calorías de los últimos 7 días
 /historialpeso - Ver el historial reciente de peso
 /help - Mostrar esta ayuda
 
-El bot te enviará automáticamente un resumen diario de noticias y eventos a las ${process.env.SCHEDULE_HOUR}:${process.env.SCHEDULE_MINUTE} cada día.
+El bot te enviará automáticamente un resumen diario de noticias y eventos a las ${process.env.SCHEDULE_HOUR}:${String(process.env.SCHEDULE_MINUTE || 0).padStart(2, "0")} cada día.
   `,
     { parse_mode: "Markdown" },
   );
@@ -563,7 +563,7 @@ bot.command("calorias_hoy", async (ctx) => {
 bot.command("alimento", async (ctx) => {
   const payload = extractCommandPayload(ctx);
   if (!payload) {
-    return ctx.reply("Usa /alimento <cantidad> <alimento>. Ejemplo: /alimento 1 manzana");
+    return ctx.reply("Usa /alimento cantidad alimento. Ejemplo: /alimento 1 manzana");
   }
 
   const parts = payload.split(/\s+/);
@@ -585,7 +585,7 @@ bot.command("alimento", async (ctx) => {
 bot.command("alimentos", async (ctx) => {
   const foods = getFoodCatalog(50);
   ctx.reply(
-    `🍽️ *Alimentos conocidos por el bot:*\n\n${foods.join(" · ")}\n\nUsa /alimento <cantidad> <alimento> para consultar calorías.`,
+    `🍽️ *Alimentos conocidos por el bot:*\n\n${foods.join(" · ")}\n\nUsa /alimento cantidad alimento para consultar calorías.`,
     { parse_mode: "Markdown" },
   );
 });
@@ -594,7 +594,7 @@ bot.command("comida", async (ctx) => {
   const payload = extractCommandPayload(ctx);
   if (!payload) {
     return ctx.reply(
-      "Usa /comida <cantidad> <alimento>. Ejemplo: /comida 2 huevos",
+      "Usa /comida cantidad alimento. Ejemplo: /comida 2 huevos",
     );
   }
 
@@ -629,7 +629,7 @@ bot.command("peso", async (ctx) => {
   const weight = parseFloat(payload.replace(",", "."));
 
   if (!weight || weight <= 0) {
-    return ctx.reply("Usa /peso <valor-en-kg>. Ejemplo: /peso 72.3");
+    return ctx.reply("Usa /peso valor-en-kg. Ejemplo: /peso 72.3");
   }
 
   await addWeightEntry(weight, formatDayKey(new Date()));
@@ -644,7 +644,7 @@ bot.command("altura", async (ctx) => {
   const height = parseFloat(payload.replace(",", "."));
 
   if (!height || height <= 0) {
-    return ctx.reply("Usa /altura <cm>. Ejemplo: /altura 175");
+    return ctx.reply("Usa /altura cm. Ejemplo: /altura 175");
   }
 
   await saveUserProfile({ height_cm: height });
@@ -658,7 +658,7 @@ bot.command("edad", async (ctx) => {
   const age = parseInt(payload, 10);
 
   if (!age || age <= 0) {
-    return ctx.reply("Usa /edad <años>. Ejemplo: /edad 30");
+    return ctx.reply("Usa /edad años. Ejemplo: /edad 30");
   }
 
   await saveUserProfile({ age_years: age });
@@ -673,7 +673,7 @@ bot.command("perfil", async (ctx) => {
 
   if (parts.length < 1) {
     return ctx.reply(
-      "Usa /perfil <altura_cm> <edad>. Ejemplo: /perfil 175 30",
+      "Usa /perfil altura edad. Ejemplo: /perfil 175 30",
     );
   }
 

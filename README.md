@@ -9,6 +9,7 @@ Un bot de Telegram que te envía diariamente a las 8am los eventos del día y la
 - ⏰ Envío automático diario a las 8am
 - 💬 Comandos interactivos para obtener noticias y eventos bajo demanda
 - 🐳 Fácil despliegue con Docker
+- 🥗 Registro local de comidas, calorías y peso en SQLite
 
 ## 🚀 Instalación Rápida
 
@@ -99,6 +100,16 @@ docker run -d \
 - `/start` - Inicia el bot y muestra información
 - `/noticias` - Obtiene las últimas noticias tech
 - `/eventos` - Muestra los eventos de hoy
+- `/status` - Ver estado del servidor
+- `/top` - Ver top 10 procesos por CPU y RAM
+- `/comida <cantidad> <alimento>` - Registrar una comida. Ej: `/comida 2 huevos`
+- `/peso <kg>` - Registrar tu peso actual. Ej: `/peso 72.3`
+- `/altura <cm>` - Registrar tu altura. Ej: `/altura 175`
+- `/edad <años>` - Registrar tu edad. Ej: `/edad 30`
+- `/perfil <altura_cm> <edad>` - Registrar altura y edad juntos. Ej: `/perfil 175 30`
+- `/calorias` - Ver las calorías consumidas hoy y el objetivo estimado
+- `/semanal` - Ver el resumen de calorías de los últimos 7 días
+- `/historialpeso` - Ver tu historial reciente de peso
 - `/help` - Muestra la ayuda
 
 ## 📝 Estructura del Proyecto
@@ -112,6 +123,7 @@ docker run -d \
 ├── package.json           # Dependencias Node.js
 ├── .env.example           # Ejemplo de variables de entorno
 ├── .gitignore             # Archivos ignorados por Git
+├── data/                  # Base de datos SQLite creada en tiempo de ejecución
 └── README.md              # Este archivo
 ```
 

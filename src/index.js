@@ -6,8 +6,8 @@ const { Telegraf } = require("telegraf");
 const cron = require("node-cron");
 const axios = require("axios");
 const Parser = require("rss-parser");
-const { addFoodEntry, getFoodSummaryByDate, getCaloriesLastNDays, addWeightEntry, getRecentWeightEntries, getLatestWeightEntry, getUserProfile, saveUserProfile } = require("./db");
-const { estimateFoodCalories, getFoodCatalog, formatFoodLookup, getDailyCalorieTarget, formatDayKey, formatCalories, formatWeightHistory } = require("./nutrition");
+const { addWeightEntry, getRecentWeightEntries, getLatestWeightEntry, getUserProfile, saveUserProfile } = require("./db");
+const { formatDayKey } = require("./nutrition");
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const parser = new Parser();
@@ -259,72 +259,6 @@ function extractCommandPayload(ctx) {
   return (ctx.message?.text || "").replace(/^(\/\w+)(@\w+)?\s*/i, "").trim();
 }
 
-async function buildDailyCaloriesReport(dateKey) {
-  const summary = await getFoodSummaryByDate(dateKey);
-  const profile = await getUserProfile();
-  const latestWeight = await getLatestWeightEntry();
-
-  let report = `📊 *Resumen de calorías del día* (${dateKey})\n\n`;
-  report += `• Total consumido: ${Math.round(summary.totalCalories)} kcal\n`;
-
-  if (latestWeight) {
-    report += `• Último peso registrado: ${latestWeight.weight_kg.toFixed(1)} kg (${latestWeight.date})\n`;
-  }
-
-  if (profile.height_cm) {
-    report += `• Altura registrada: ${profile.height_cm} cm\n`;
-  }
-
-  if (profile.age_years) {
-    report += `• Edad registrada: ${profile.age_years} años\n`;
-  }
-
-  if (latestWeight && profile.height_cm) {
-    const target = getDailyCalorieTarget(latestWeight.weight_kg, profile.height_cm, profile.age_years);
-    report += `• Objetivo estimado: ${formatCalories(target.target)} (${target.activityLevel})\n`;
-    const diff = Math.round(summary.totalCalories - target.target);
-    report += `• Diferencia con objetivo: ${diff >= 0 ? `+${diff}` : diff} kcal\n`;
-  }
-
-  report += `\n`;
-
-  if (summary.entries.length > 0) {
-    report += `*Comidas registradas hoy:*\n`;
-    summary.entries.forEach((entry) => {
-      report += `• ${entry.quantity} ${entry.unit || "unidad"} de ${entry.original_name || entry.name} = ${Math.round(entry.calories)} kcal\n`;
-    });
-  } else {
-    report += "No hay comidas registradas hoy. Usa /comida para añadir alimentos.";
-  }
-
-  return report;
-}
-
-async function buildWeeklyCaloriesReport() {
-  const rows = await getCaloriesLastNDays(7);
-  const profile = await getUserProfile();
-  const latestWeight = await getLatestWeightEntry();
-
-  let report = `📅 *Resumen de calorías - últimos 7 días*\n\n`;
-  let total = 0;
-
-  rows.forEach((day) => {
-    report += `• ${day.date}: ${Math.round(day.total_calories)} kcal\n`;
-    total += day.total_calories;
-  });
-
-  const average = rows.length ? Math.round(total / rows.length) : 0;
-  report += `\n• Total 7 días: ${Math.round(total)} kcal\n`;
-  report += `• Promedio diario: ${average} kcal\n`;
-
-  if (latestWeight && profile.height_cm) {
-    const target = getDailyCalorieTarget(latestWeight.weight_kg, profile.height_cm, profile.age_years);
-    report += `• Objetivo estimado diario: ${formatCalories(target.target)}\n`;
-  }
-
-  return report;
-}
-
 async function fetchCalendarEvents(calendarId, calendar, now, endOfDay) {
   try {
     const response = await calendar.events.list({
@@ -480,7 +414,7 @@ async function sendDailyMessage() {
 // Comandos del bot
 bot.command("start", (ctx) => {
   ctx.reply(
-    `¡Hola! 👋 Soy tu bot de noticias tech, eventos y nutrición.\n\nComandos disponibles:\n/noticias - Obtener noticias ahora\n/eventos - Ver eventos de hoy\n/status - Ver estado del servidor\n/top - Ver top 10 procesos\n/comida - Registrar una comida\n/peso - Registrar tu peso\n/calorias - Consultar calorías consumidas hoy\n/semanal - Ver consumo semanal\n/historialpeso - Ver tu historial de peso\n/help - Ayuda`,
+    `¡Hola! 👋 Soy tu bot de noticias tech, eventos y nutrición.\n\nComandos disponibles:\n/noticias - Obtener noticias ahora\n/eventos - Ver eventos de hoy\n/status - Ver estado del servidor\n/top - Ver top 10 procesos\n/peso - Registrar tu peso\n/historialpeso - Ver tu historial de peso\n/help - Ayuda`,
   );
 });
 
@@ -530,15 +464,10 @@ bot.command("help", (ctx) => {
 /eventos - Ver eventos del día
 /status - Ver estado del servidor
 /top - Ver top 10 procesos por CPU y RAM
-/comida cantidad alimento - Registrar una comida. Ej: /comida 2 huevos
-/alimento cantidad alimento - Consultar calorías estimadas sin registrar. Ej: /alimento 1 manzana
-/alimentos - Ver algunos alimentos conocidos por el bot
 /peso kg - Registrar tu peso actual. Ej: /peso 72.5
 /altura cm - Registrar tu altura. Ej: /altura 175
 /edad años - Registrar tu edad. Ej: /edad 30
 /perfil altura edad - Registrar altura y edad juntos. Ej: /perfil 175 30
-/calorias - Ver las calorías consumidas hoy y tu objetivo estimado
-/semanal - Ver el resumen de calorías de los últimos 7 días
 /historialpeso - Ver el historial reciente de peso
 /help - Mostrar esta ayuda
 
@@ -548,81 +477,6 @@ El bot te enviará automáticamente un resumen diario de noticias y eventos a la
   );
 });
 
-bot.command("calorias", async (ctx) => {
-  ctx.sendChatAction("typing");
-  const report = await buildDailyCaloriesReport(formatDayKey(new Date()));
-  ctx.reply(report, { parse_mode: "Markdown" });
-});
-
-bot.command("calorias_hoy", async (ctx) => {
-  ctx.sendChatAction("typing");
-  const report = await buildDailyCaloriesReport(formatDayKey(new Date()));
-  ctx.reply(report, { parse_mode: "Markdown" });
-});
-
-bot.command("alimento", async (ctx) => {
-  const payload = extractCommandPayload(ctx);
-  if (!payload) {
-    return ctx.reply("Usa /alimento cantidad alimento. Ejemplo: /alimento 1 manzana");
-  }
-
-  const parts = payload.split(/\s+/);
-  let quantity = parseFloat(parts[0].replace(",", "."));
-  let foodName = parts.slice(1).join(" ").trim();
-
-  if (Number.isNaN(quantity) || !foodName) {
-    quantity = 1;
-    foodName = payload;
-  }
-
-  const estimate = estimateFoodCalories(foodName, quantity);
-  const response = formatFoodLookup(foodName, quantity);
-  ctx.reply(`🔎 ${response}\n\nUsa /comida para registrar esta entrada si quieres guardarla.`, {
-    parse_mode: "Markdown",
-  });
-});
-
-bot.command("alimentos", async (ctx) => {
-  const foods = getFoodCatalog(50);
-  ctx.reply(
-    `🍽️ *Alimentos conocidos por el bot:*\n\n${foods.join(" · ")}\n\nUsa /alimento cantidad alimento para consultar calorías.`,
-    { parse_mode: "Markdown" },
-  );
-});
-
-bot.command("comida", async (ctx) => {
-  const payload = extractCommandPayload(ctx);
-  if (!payload) {
-    return ctx.reply(
-      "Usa /comida cantidad alimento. Ejemplo: /comida 2 huevos",
-    );
-  }
-
-  const parts = payload.split(/\s+/);
-  let quantity = parseFloat(parts[0].replace(",", "."));
-  let foodName = parts.slice(1).join(" ").trim();
-
-  if (Number.isNaN(quantity) || !foodName) {
-    quantity = 1;
-    foodName = payload;
-  }
-
-  const estimate = estimateFoodCalories(foodName, quantity);
-  await addFoodEntry({
-    date: formatDayKey(new Date()),
-    name: estimate.name,
-    quantity,
-    calories: estimate.calories,
-    unit: estimate.unit,
-    originalName: foodName,
-  });
-
-  const dailyReport = await buildDailyCaloriesReport(formatDayKey(new Date()));
-  ctx.reply(
-    `✅ Registrado: ${quantity} ${foodName}\nCalorías estimadas: ${estimate.calories} kcal\n\n${dailyReport}`,
-    { parse_mode: "Markdown" },
-  );
-});
 
 bot.command("peso", async (ctx) => {
   const payload = extractCommandPayload(ctx);
@@ -634,7 +488,7 @@ bot.command("peso", async (ctx) => {
 
   await addWeightEntry(weight, formatDayKey(new Date()));
   ctx.reply(
-    `✅ Peso registrado: ${weight.toFixed(1)} kg\nUsa /calorias para ver tu consumo diario y /historialpeso para ver la evolución de tu peso.`,
+    `✅ Peso registrado: ${weight.toFixed(1)} kg\nUsa /historialpeso para ver la evolución de tu peso.`,
     { parse_mode: "Markdown" },
   );
 });
@@ -688,12 +542,6 @@ bot.command("perfil", async (ctx) => {
   ctx.reply(`✅ Perfil actualizado. Altura: ${height.toFixed(0)} cm${age ? `, Edad: ${age} años` : ""}`,
     { parse_mode: "Markdown" },
   );
-});
-
-bot.command("semanal", async (ctx) => {
-  ctx.sendChatAction("typing");
-  const report = await buildWeeklyCaloriesReport();
-  ctx.reply(report, { parse_mode: "Markdown" });
 });
 
 bot.command("historialpeso", async (ctx) => {

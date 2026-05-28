@@ -102,13 +102,10 @@ docker run -d \
 - `/eventos` - Muestra los eventos de hoy
 - `/status` - Ver estado del servidor
 - `/top` - Ver top 10 procesos por CPU y RAM
-- `/comida <cantidad> <alimento>` - Registrar una comida. Ej: `/comida 2 huevos`
 - `/peso <kg>` - Registrar tu peso actual. Ej: `/peso 72.3`
 - `/altura <cm>` - Registrar tu altura. Ej: `/altura 175`
 - `/edad <años>` - Registrar tu edad. Ej: `/edad 30`
 - `/perfil <altura_cm> <edad>` - Registrar altura y edad juntos. Ej: `/perfil 175 30`
-- `/calorias` - Ver las calorías consumidas hoy y el objetivo estimado
-- `/semanal` - Ver el resumen de calorías de los últimos 7 días
 - `/historialpeso` - Ver tu historial reciente de peso
 - `/help` - Muestra la ayuda
 
